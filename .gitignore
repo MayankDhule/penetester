@@ -1,0 +1,60 @@
+# Security - Never commit these!
+ai_config.json
+*.key
+*.pem
+.env
+**/deepseek_api_key.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+ENV/
+
+# Logs
+*.log
+debug_*.log
+
+# Database
+instance/
+*.db
+*.sqlite
+
+# Scan outputs (may contain sensitive data)
+raw_scans/
+temp/
+*.xml
+*.json
+
+# Reports (may contain client-sensitive data)
+static/reports/*.pdf
+static/reports/*.html
+static/reports/*.json
+reports/*.pdf
+reports/*.html
+reports/*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Testing
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+
+# Security scanning tools temp files
+tools/sqlmap/output/
+tools/*/temp/
