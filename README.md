@@ -1,22 +1,22 @@
-# Pentestrr - Intelligent Penetration Testing Framework
+# Pentestrr - Penetration Testing Framework
 
-**Smart Profiling + Tool Recommendations for Rapid Security Assessments**
+**Target Profiling + Tool Recommendations for Rapid Security Assessments**
 
-A CLI-based penetration testing framework that intelligently profiles targets before testing and recommends specialized tools for deeper analysis. Perfect for rapid first-pass security assessments and bug bounty reconnaissance.
+A CLI-based penetration testing framework that profiles targets before testing and recommends specialized tools for deeper analysis. Aimed at rapid first-pass security assessments and bug bounty reconnaissance.
 
-## 🎯 What Makes This Different
+## 🎯 What It Does
 
-Pentestrr focuses on **intelligent automation + expert guidance**:
+Pentestrr focuses on **automated first-pass checks + tool guidance**:
 
-1. **Smart Profiling** - Analyzes targets first, adapts strategy based on tech stack
-2. **Tool Recommendations** - Suggests 200+ specialized tools with ready-to-use commands  
-3. **Fast Scanning** - Async/concurrent scanning (10-50x faster)
-4. **Zero False Positives** - Verified-only vulnerability detection
-5. **Clean Output** - Professional CLI output with actionable intelligence
+1. **Target Profiling** - Analyzes the target first and adapts the strategy to the detected tech stack
+2. **Tool Recommendations** - Suggests 40 tools across 15 categories with ready-to-use commands
+3. **Async Scanning** - Optional async/concurrent scanning for faster enumeration
+4. **Confidence-Rated Findings** - Each exploitation finding is tagged `confirmed` or `probable` so you know what still needs manual checking
+5. **Clean Output** - Readable CLI output plus JSON/JSON Lines for tooling
 
-**Best For:** Bug bounty hunters, security auditors, DevSecOps teams who need fast, accurate first-pass assessments with guidance on which specialized tools to use next.
+**Best For:** Bug bounty hunters, security auditors, and DevSecOps teams who want a fast first-pass pass over a target, with pointers to the specialized tools to use next.
 
-**Not For:** Deep exploitation, advanced manual testing, or replacing tools like Burp Suite Pro or Nuclei. Pentestrr finds the low-hanging fruit and tells you which pro tools to use for deeper testing.
+**Not For:** Deep exploitation, advanced manual testing, or replacing tools like Burp Suite Pro or Nuclei. Pentestrr finds low-hanging fruit and tells you which specialized tools to use for deeper testing. Injection checks are lightweight heuristics, not a substitute for sqlmap/Burp.
 
 ## 🚀 Quick Start
 
@@ -39,10 +39,10 @@ pentestrr --version
 # Full security assessment
 pentestrr scan example.com
 
-# Fast async scanning (10-50x faster)
+# Async scanning for faster enumeration
 pentestrr scan example.com --async --max-concurrent 50
 
-# With OOB validation (zero false positives)
+# With out-of-band callback testing (interact.sh)
 pentestrr scan example.com --oob-domain abc123.interact.sh
 
 # API fuzzing
@@ -76,7 +76,7 @@ pentestrr --help
 
 ```bash
 # Performance
---async                 Use async/concurrent scanning (10-50x faster)
+--async                 Use async/concurrent scanning
 --max-concurrent N      Max concurrent requests (default: 50)
 
 # Wordlists
@@ -132,7 +132,7 @@ pentestrr --help
 
 ### ✅ Tool Recommendations
 - Suggests specialized tools for each vulnerability
-- 200+ tool database with commands
+- 40-tool database across 15 categories with commands
 - Priority-ranked recommendations
 
 ## 📁 Project Structure
@@ -150,7 +150,7 @@ project/
 │   ├── wordlists.py              # External wordlist management
 │   ├── vulnerability_detector.py # Phase 3: Vulnerability Detection
 │   ├── exploiter.py              # Phase 4: Exploitation
-│   ├── oob_testing.py            # Out-of-Band validation (zero false positives)
+│   ├── oob_testing.py            # Out-of-Band callback testing (interact.sh client)
 │   ├── api_fuzzer.py             # API fuzzing (OpenAPI/GraphQL)
 │   ├── smart_retry.py            # Retry logic with circuit breaker
 │   ├── reporter.py               # Phase 5: Report Generation
@@ -160,7 +160,7 @@ project/
 │   └── logger.py                 # Logging utilities
 ├── reports/                      # Generated reports directory
 ├── main.py                       # CLI entry point
-├── requirements.txt              # Dependencies (11 packages)
+├── requirements.txt              # Dependencies (12 packages)
 ├── setup.py                      # Package setup
 ├── .gitignore                    # Git ignore rules
 └── README.md                     # This file
@@ -168,7 +168,7 @@ project/
 
 ## 🔧 Dependencies
 
-**Minimal & Clean (11 packages, 97% reduction from original)**
+**Minimal & focused (12 packages)**
 
 ### Core HTTP & Networking
 - **requests**: Synchronous HTTP requests
@@ -176,7 +176,7 @@ project/
 - **dnspython**: DNS resolution and enumeration
 
 ### Async Performance (Phase 2)
-- **aiohttp**: Async HTTP client (10-50x faster)
+- **aiohttp**: Async HTTP client
 - **aiodns**: Async DNS resolution
 
 ### Web Parsing
@@ -189,19 +189,22 @@ project/
 - **reportlab**: Professional PDF generation
 - **PyPDF2**: PDF manipulation
 
-**No bloat. No ML libraries. No unused dependencies.**
+### Out-of-Band Testing
+- **cryptography**: RSA/AES for the interact.sh callback client
+
+**No ML libraries. No unused dependencies.**
 
 ## 🚀 Advanced Features
 
-### ⚡ Enterprise Performance
-- **Async/Concurrent Scanning**: 10-50x faster than traditional tools
-- **50+ Concurrent Requests**: Configurable concurrency limits
+### ⚡ Performance
+- **Async/Concurrent Scanning**: Concurrent requests speed up enumeration
+- **Configurable Concurrency**: Tune the concurrent request limit
 - **External Wordlists**: Bring your own SecLists wordlists
-- **Smart Resource Management**: Automatic connection pooling
+- **Connection Pooling**: Reuses connections automatically
 
-### 🛠️ Smart Tool Recommendations (NEW!)
-- **Intelligent Suggestions**: Recommends specialized tools for each vulnerability
-- **200+ Tools Database**: Comprehensive tool recommendations
+### 🛠️ Tool Recommendations
+- **Suggestions**: Recommends specialized tools for each vulnerability
+- **40 Tools / 15 Categories**: Curated tool recommendations
 - **Priority-Based**: Tools ranked by effectiveness
 - **Ready-to-Use Commands**: Copy-paste commands for immediate testing
 - **Integrated in Reports**: Tool recommendations in CLI output
@@ -227,12 +230,10 @@ project/
 - **Stdin Support**: Read targets from pipes
 - **Tool Chaining**: `cat targets.txt | pentestrr scan --jsonl | jq`
 
-### 📊 Real-World Testing
-- **Tested on**: testfire.net, demo.testfire.net, testphp.vulnweb.com
-- **Success Rate**: 100% on available targets
-- **Average Speed**: ~40 seconds per site
-- **Accuracy**: 100% detection rate
-- **Reliability**: Graceful error handling
+### 📊 Testing Notes
+- **Tried against**: testfire.net, demo.testfire.net, testphp.vulnweb.com
+- **Typical runtime**: roughly 40 seconds per site (varies with target and options)
+- **Error handling**: Graceful handling of timeouts and unreachable services
 
 ## 🏆 Competitive Position
 
@@ -250,26 +251,34 @@ project/
 
 ## 💡 Usage Examples
 
-### Example 1: Fast Async Scan
+### Example 1: Async Scan
 ```bash
-# 10-50x faster than traditional scanning
+# Concurrent scanning for faster enumeration
 pentestrr scan example.com --async --max-concurrent 50
 ```
 
-### Example 2: Zero False Positives with OOB
+### Example 2: Out-of-Band (OOB) Callback Testing
 ```bash
-# Get interact.sh domain (free)
-curl -s https://app.interactsh.com/api/register | jq -r '.domain'
+# Option A: use the built-in interact.sh client (needs the 'cryptography' package)
+#           it self-registers a domain and polls for callbacks
 
-# Scan with OOB validation
-pentestrr scan example.com --oob-domain abc123.interact.sh --only-confirmed
+# Option B: use a domain you control (e.g. Burp Collaborator); you check that
+#           platform yourself for callbacks
+pentestrr scan example.com --oob-domain abc123.interact.sh
 ```
 
-### Example 3: API Security Testing
+> OOB testing confirms a blind vulnerability only when a DNS/HTTP callback is
+> received for the unique subdomain. No callback is not, by itself, proof the
+> target is safe.
+
+### Example 3: JSON Output for Tooling
 ```bash
-# Automatic API discovery and fuzzing
-pentestrr scan example.com --fuzz-apis --test-auth-bypass --test-idor
+# Full machine-readable results
+pentestrr scan example.com --json > results.json
 ```
+
+> Note: an API fuzzer exists in `core/api_fuzzer.py` but is not yet wired to a
+> CLI flag, so there is no `--fuzz-apis` option today.
 
 ### Example 4: Professional Workflow with Burp Suite
 ```bash
@@ -292,18 +301,13 @@ pentestrr scan example.com \\
   --subdomain-wordlist ~/SecLists/Discovery/DNS/subdomains-top1million-5000.txt
 ```
 
-### Example 7: Complete Professional Scan
+### Example 7: Full Scan with Available Options
 ```bash
-# Ultimate professional setup
+# Combine the options that actually exist today
 pentestrr scan example.com \\
   --async \\
   --max-concurrent 50 \\
-  --oob-domain xyz.burpcollaborator.net \\
-  --fuzz-apis \\
-  --test-auth-bypass \\
-  --test-idor \\
-  --smart-retry \\
-  --circuit-breaker \\
+  --oob-domain xyz.interact.sh \\
   --proxy http://127.0.0.1:8080 \\
   --dir-wordlist ~/SecLists/directories.txt \\
   --jsonl | tee results.jsonl
@@ -313,7 +317,7 @@ pentestrr scan example.com \\
 
 This project demonstrates:
 - **Software Architecture**: Modular design with clear separation of concerns
-- **Intelligent Automation**: Decision-making based on reconnaissance
+- **Automation**: Decision-making based on reconnaissance
 - **Security Engineering**: Real-world pentesting methodology
 - **Python Best Practices**: Type hints, documentation, testing
 

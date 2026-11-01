@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Pentestrr - Intelligent Penetration Testing Framework
-Professional CLI-based security assessment tool
+Pentestrr - Penetration Testing Framework
+CLI-based security assessment tool
 """
 
 import sys
@@ -28,7 +28,7 @@ BANNER = """
 ║   ██║     ███████╗██║ ╚████║   ██║   ███████╗███████║   ██║   ║
 ║   ╚═╝     ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚══════╝   ╚═╝   ║
 ║                                                               ║
-║        Intelligent Penetration Testing Framework             ║
+║             Penetration Testing Framework                    ║
 ║                    Version {version}                            ║
 ╚═══════════════════════════════════════════════════════════════╝
 """
@@ -57,7 +57,7 @@ def create_parser():
     """Create argument parser with all options"""
     parser = argparse.ArgumentParser(
         prog='pentestrr',
-        description='Pentestrr - Intelligent Penetration Testing Framework',
+        description='Pentestrr - Penetration Testing Framework',
         epilog='Example: pentestrr scan example.com --output ./reports',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -342,7 +342,7 @@ def cmd_exploit(args, logger):
 
 def cmd_info(args, logger):
     """Display framework information"""
-    print(f"\nPentestrr - Intelligent Penetration Testing Framework")
+    print(f"\nPentestrr - Penetration Testing Framework")
     print(f"Version: {VERSION}")
     print(f"\nCapabilities:")
     print(f"  - Phase 0: Smart Profiling (Heuristic-based target analysis)")
@@ -354,7 +354,7 @@ def cmd_info(args, logger):
     print(f"\nFeatures:")
     print(f"  - WAF/CDN detection")
     print(f"  - Rate limiting detection")
-    print(f"  - Intelligent tool recommendation")
+    print(f"  - Tool recommendation")
     print(f"  - Adaptive scanning strategy")
     print(f"  - Professional PDF reports")
     print(f"\nAuthor: Security Research Team")

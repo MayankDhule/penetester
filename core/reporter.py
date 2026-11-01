@@ -103,6 +103,7 @@ class ReportGenerator:
                 'description': exploit.get('evidence'),
                 'url': exploit.get('url'),
                 'exploitable': True,
+                'confidence': exploit.get('confidence', 'probable'),
                 'impact': exploit.get('impact'),
                 'recommendation': exploit.get('recommendation')
             })
@@ -387,7 +388,15 @@ class ReportGenerator:
                     if finding.get('url'):
                         story.append(Paragraph(f"<b>URL:</b> {finding['url']}", body_style))
                     if finding.get('exploitable'):
-                        story.append(Paragraph("<b>Status:</b> EXPLOITABLE - Confirmed during testing", body_style))
+                        conf = (finding.get('confidence') or 'probable').lower()
+                        status_map = {
+                            'confirmed': 'CONFIRMED - Vulnerability validated during testing',
+                            'probable': 'PROBABLE - Indicator observed; manual verification required',
+                            'info': 'INFORMATIONAL - Potential issue, not verified',
+                        }
+                        story.append(Paragraph(
+                            f"<b>Status:</b> {status_map.get(conf, status_map['probable'])}",
+                            body_style))
                     
                     story.append(Paragraph(f"<b>Description:</b> {finding['description']}", body_style))
                     
