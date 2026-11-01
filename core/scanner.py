@@ -3,10 +3,13 @@ Phase 2: Scanning & Enumeration Module
 Web crawling, directory discovery, and service enumeration
 """
 import requests
+import urllib3
 import re
 from typing import Dict, List, Set
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class ScanningEngine:
@@ -32,6 +35,10 @@ class ScanningEngine:
         self.visited_urls = set()
         self.max_depth = 2
         
+        # For detecting false positives (SPA redirects)
+        self.base_page_hash = None
+        self.base_page_size = None
+        
     def execute(self) -> Dict:
         """Execute full scanning and enumeration"""
         self.logger.info("="*60)
@@ -50,6 +57,9 @@ class ScanningEngine:
         
         # Web crawling
         if should_scan_web:
+            # Learn base page characteristics first (for SPA detection)
+            self._learn_base_page(base_url)
+            
             self.web_crawl(base_url)
             self.discover_directories(base_url)
             self.enumerate_endpoints(base_url)
@@ -75,6 +85,60 @@ class ScanningEngine:
             return f"https://{self.target}"
         else:
             return f"http://{self.target}"
+    
+    def _learn_base_page(self, base_url: str):
+        """Learn the base page characteristics to detect SPA redirects"""
+        try:
+            response = requests.get(base_url, timeout=10, verify=False)
+            self.base_page_size = len(response.content)
+            self.base_page_hash = hash(response.content)
+            self.logger.debug(f"[SCANNER] Base page: {self.base_page_size} bytes, hash: {self.base_page_hash}")
+        except (requests.exceptions.RequestException, AttributeError) as e:
+            self.logger.debug(f"[SCANNER] Failed to learn base page: {e}")
+    
+    def _is_real_file(self, response, expected_type: str = None) -> bool:
+        """
+        Detect if response is a real file or SPA redirect
+        Returns True if it's a real file, False if it's a false positive
+        """
+        # Check if response is empty
+        if len(response.content) == 0:
+            return False
+        
+        # Check if it's the same as base page (SPA redirect)
+        if self.base_page_hash and hash(response.content) == self.base_page_hash:
+            return False
+        
+        # Check if size matches base page (likely SPA redirect)
+        if self.base_page_size and len(response.content) == self.base_page_size:
+            return False
+        
+        # Check if response is HTML when we expect a specific file type
+        content_type = response.headers.get('Content-Type', '').lower()
+        is_html = 'text/html' in content_type or response.content.startswith(b'<!DOCTYPE') or response.content.startswith(b'<html')
+        
+        # If we're looking for specific file types and got HTML, it's likely a false positive
+        if expected_type:
+            if expected_type in ['backup', 'config', 'vcs']:
+                if is_html:
+                    return False
+        
+        # Check for common SPA indicators in content
+        if is_html:
+            content_str = response.content.decode('utf-8', errors='ignore').lower()
+            spa_indicators = [
+                'id="root"',
+                'id="app"',
+                'react',
+                'vue',
+                'angular',
+                'single page application',
+                'spa'
+            ]
+            if any(indicator in content_str for indicator in spa_indicators):
+                return False
+        
+        return True
     
     def web_crawl(self, base_url: str, depth: int = 0):
         """Crawl website to discover pages"""
@@ -152,8 +216,8 @@ class ScanningEngine:
                     found_count += 1
                     self.logger.info(f"[SCANNER] ✓ Found: /{directory}/ [{response.status_code}]")
                     
-            except:
-                pass
+            except requests.exceptions.RequestException as e:
+                self.logger.debug(f"[SCANNER] Directory check failed for /{directory}/: {e}")
         
         if found_count == 0:
             self.logger.info("[SCANNER] No common directories found")
@@ -181,20 +245,22 @@ class ScanningEngine:
                 response = requests.get(url, timeout=5, verify=False)
                 
                 if response.status_code == 200:
-                    self.results['files'].append({
-                        'url': url,
-                        'filename': filename,
-                        'size': len(response.content)
-                    })
-                    found_count += 1
-                    self.logger.info(f"[SCANNER] ✓ Found: {filename} ({len(response.content)} bytes)")
+                    # Verify it's a real file, not SPA redirect
+                    if self._is_real_file(response, expected_type='config'):
+                        self.results['files'].append({
+                            'url': url,
+                            'filename': filename,
+                            'size': len(response.content)
+                        })
+                        found_count += 1
+                        self.logger.info(f"[SCANNER] ✓ Found: {filename} ({len(response.content)} bytes)")
+                        
+                        # Parse robots.txt for additional paths
+                        if filename == 'robots.txt':
+                            self._parse_robots(response.text, base_url)
                     
-                    # Parse robots.txt for additional paths
-                    if filename == 'robots.txt':
-                        self._parse_robots(response.text, base_url)
-                    
-            except:
-                pass
+            except (requests.exceptions.RequestException, ValueError) as e:
+                self.logger.debug(f"[SCANNER] Robots.txt parsing failed: {e}")
         
         if found_count == 0:
             self.logger.info("[SCANNER] No interesting files found")
@@ -313,23 +379,25 @@ class ScanningEngine:
                 test_url = urljoin(base_url, f"/{filename}{ext}")
                 
                 try:
-                    response = requests.head(test_url, timeout=3, verify=False, allow_redirects=False)
+                    response = requests.get(test_url, timeout=3, verify=False, allow_redirects=False)
                     
                     if response.status_code == 200:
-                        self.logger.info(f"[SCANNER] ⚠️  Found backup file: {filename}{ext}")
-                        found_backups.append({
-                            'filename': f"{filename}{ext}",
-                            'url': test_url,
-                            'size': response.headers.get('Content-Length', 'Unknown')
-                        })
-                        
-                        # Add to files list
-                        self.results['files'].append({
-                            'filename': f"{filename}{ext}",
-                            'url': test_url,
-                            'size': response.headers.get('Content-Length', 'Unknown'),
-                            'type': 'backup'
-                        })
+                        # Verify it's a real file, not SPA redirect
+                        if self._is_real_file(response, expected_type='backup'):
+                            self.logger.info(f"[SCANNER] ⚠️  Found backup file: {filename}{ext}")
+                            found_backups.append({
+                                'filename': f"{filename}{ext}",
+                                'url': test_url,
+                                'size': len(response.content)
+                            })
+                            
+                            # Add to files list
+                            self.results['files'].append({
+                                'filename': f"{filename}{ext}",
+                                'url': test_url,
+                                'size': len(response.content),
+                                'type': 'backup'
+                            })
                         
                 except requests.RequestException:
                     pass
@@ -362,22 +430,24 @@ class ScanningEngine:
                 response = requests.get(test_url, timeout=3, verify=False, allow_redirects=False)
                 
                 if response.status_code == 200 and len(response.content) > 0:
-                    vcs_type = vcs_path.split('/')[0]
-                    self.logger.info(f"[SCANNER] ⚠️  CRITICAL: {vcs_type} repository exposed!")
-                    
-                    found_vcs.append({
-                        'type': vcs_type,
-                        'url': test_url,
-                        'severity': 'CRITICAL'
-                    })
-                    
-                    # Add to files list
-                    self.results['files'].append({
-                        'filename': vcs_path,
-                        'url': test_url,
-                        'size': len(response.content),
-                        'type': 'vcs_exposure'
-                    })
+                    # Verify it's a real VCS file, not SPA redirect
+                    if self._is_real_file(response, expected_type='vcs'):
+                        vcs_type = vcs_path.split('/')[0]
+                        self.logger.info(f"[SCANNER] ⚠️  CRITICAL: {vcs_type} repository exposed!")
+                        
+                        found_vcs.append({
+                            'type': vcs_type,
+                            'url': test_url,
+                            'severity': 'CRITICAL'
+                        })
+                        
+                        # Add to files list
+                        self.results['files'].append({
+                            'filename': vcs_path,
+                            'url': test_url,
+                            'size': len(response.content),
+                            'type': 'vcs_exposure'
+                        })
                     
             except requests.RequestException:
                 pass

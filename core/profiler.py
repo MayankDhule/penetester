@@ -4,11 +4,14 @@ Intelligent target analysis and attack strategy generation
 """
 import socket
 import requests
+import urllib3
 import re
 from typing import Dict, List, Tuple
 from urllib.parse import urlparse
 import ssl
 import json
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class SmartProfiler:
     """Intelligent target profiler that analyzes and creates custom attack strategies"""
@@ -89,6 +92,10 @@ class SmartProfiler:
         # Quick port check
         self._quick_port_check()
         
+        # If no ports detected, try HTTP/HTTPS directly
+        if not self.profile['open_ports']:
+            self._try_web_service()
+        
         # Check for web services
         if 80 in self.profile['open_ports'] or 443 in self.profile['open_ports']:
             self.profile['attack_surface'].append('web')
@@ -98,6 +105,30 @@ class SmartProfiler:
             if 443 in self.profile['open_ports']:
                 self.profile['ssl_enabled'] = True
                 self.logger.info(f"[PROFILER] ✓ SSL/TLS enabled")
+    
+    def _try_web_service(self):
+        """Try to connect via HTTP/HTTPS if port scan fails"""
+        try:
+            # Try HTTPS first
+            response = requests.get(self.target if '://' in self.target else f'https://{self.target}', 
+                                   timeout=5, verify=False)
+            if response.status_code:
+                self.profile['open_ports'].append(443)
+                self.logger.info(f"[PROFILER] ✓ HTTPS service detected (direct connection)")
+                return
+        except (requests.exceptions.RequestException, ConnectionError, TimeoutError) as e:
+            self.logger.debug(f"[PROFILER] HTTPS connection failed: {e}")
+        
+        try:
+            # Try HTTP
+            response = requests.get(self.target if '://' in self.target else f'http://{self.target}', 
+                                   timeout=5)
+            if response.status_code:
+                self.profile['open_ports'].append(80)
+                self.logger.info(f"[PROFILER] ✓ HTTP service detected (direct connection)")
+                return
+        except (requests.exceptions.RequestException, ConnectionError, TimeoutError) as e:
+            self.logger.debug(f"[PROFILER] HTTP connection failed: {e}")
         
         # Check for SSH
         if 22 in self.profile['open_ports']:
@@ -629,11 +660,18 @@ class SmartProfiler:
         """Quick check of common ports"""
         common_ports = [21, 22, 23, 25, 80, 443, 445, 3306, 3389, 5432, 8080, 8443]
         
+        # Extract hostname from URL if needed
+        target_host = self.target
+        if '://' in target_host:
+            parsed = urlparse(target_host)
+            target_host = parsed.netloc or parsed.path
+        
         # Try to resolve hostname first
         try:
-            target_ip = socket.gethostbyname(self.target)
-        except:
-            target_ip = self.target
+            target_ip = socket.gethostbyname(target_host)
+        except (socket.gaierror, socket.herror) as e:
+            self.logger.debug(f"[PROFILER] DNS resolution failed: {e}")
+            target_ip = target_host
         
         for port in common_ports:
             try:
@@ -786,8 +824,8 @@ class SmartProfiler:
             elif 'access denied' in body or 'blocked' in body:
                 # Generic WAF detection
                 return 'Generic WAF'
-        except:
-            pass
+        except (requests.exceptions.RequestException, KeyError) as e:
+            self.logger.debug(f"[PROFILER] WAF detection failed: {e}")
         
         return None
     
@@ -904,7 +942,8 @@ class SmartProfiler:
                 return 'HTTP/3 (QUIC)'
             
             return 'HTTP/1.1'
-        except:
+        except (requests.exceptions.RequestException, AttributeError) as e:
+            self.logger.debug(f"[PROFILER] HTTP version detection failed: {e}")
             return 'Unknown'
     
     def _check_security_txt(self, url: str) -> bool:
@@ -921,10 +960,11 @@ class SmartProfiler:
                     resp = requests.get(location, timeout=5, verify=False)
                     if resp.status_code == 200 and 'contact' in resp.text.lower():
                         return True
-                except:
+                except requests.exceptions.RequestException:
                     continue
             return False
-        except:
+        except requests.exceptions.RequestException as e:
+            self.logger.debug(f"[PROFILER] Security.txt check failed: {e}")
             return False
     
     def _analyze_cookies(self, response) -> Dict:
@@ -958,7 +998,8 @@ class SmartProfiler:
                     cookies_info['issues'].append(f"{cookie.name}: Missing SameSite attribute")
             
             return cookies_info
-        except:
+        except (requests.exceptions.RequestException, AttributeError) as e:
+            self.logger.debug(f"[PROFILER] Cookie analysis failed: {e}")
             return cookies_info
     
     def _detect_tls_version(self, target: str) -> str:
@@ -975,7 +1016,8 @@ class SmartProfiler:
                 with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                     version = ssock.version()
                     return version
-        except:
+        except (ssl.SSLError, socket.error, OSError) as e:
+            self.logger.debug(f"[PROFILER] TLS version detection failed: {e}")
             return 'Unknown'
     
     def _detect_server_technologies(self, response) -> List[str]:
@@ -1060,5 +1102,6 @@ class SmartProfiler:
                     'total_rules': len(disallowed)
                 }
             return {'exists': False}
-        except:
+        except (requests.exceptions.RequestException, ValueError) as e:
+            self.logger.debug(f"[PROFILER] Robots.txt analysis failed: {e}")
             return {'exists': False}

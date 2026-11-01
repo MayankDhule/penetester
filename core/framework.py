@@ -1,5 +1,5 @@
 """
-PentestAI Framework - Main Orchestrator
+Pentestrr Framework - Main Orchestrator
 Integrates all pentesting phases with intelligent strategy
 """
 from typing import Dict, Any
@@ -8,7 +8,6 @@ from core.reconnaissance import ReconnaissanceEngine
 from core.scanner import ScanningEngine
 from core.vulnerability_detector import VulnerabilityDetector
 from core.exploiter import ExploitationEngine
-from core.reporter import ReportGenerator
 
 
 class PentestFramework:
@@ -19,6 +18,8 @@ class PentestFramework:
         self.logger = logger
         self.profile = None
         self.strategy = None
+        self.use_async = False
+        self.max_concurrent = 50
         self.results = {
             'target': target,
             'profile': None,
@@ -61,10 +62,6 @@ class PentestFramework:
         exploit_results = self._run_exploitation()
         self.results['exploits'] = exploit_results
         
-        # Future phases will be added here
-        # Phase 5: Post-Exploitation
-        # etc.
-        
         self.logger.info("\n" + "="*60)
         self.logger.info("✅ PENETRATION TEST COMPLETE")
         self.logger.info("="*60)
@@ -75,7 +72,6 @@ class PentestFramework:
         """Execute only reconnaissance phase"""
         self.logger.info("[FRAMEWORK] Running reconnaissance-only mode")
         
-        # Still run profiler for intelligent recon
         self.profile, self.strategy = self._run_profiler()
         self.results['profile'] = self.profile
         self.results['strategy'] = self.strategy
@@ -87,23 +83,28 @@ class PentestFramework:
     
     def scan_and_enumerate(self) -> Dict[str, Any]:
         """Execute scanning and enumeration phase"""
-        self.logger.info("[FRAMEWORK] Scan mode not yet implemented")
+        self.logger.info("[FRAMEWORK] Running scanning and enumeration mode")
+        
+        self.profile, self.strategy = self._run_profiler()
+        self.results['profile'] = self.profile
+        self.results['strategy'] = self.strategy
+        
+        scan_results = self._run_scanning()
+        self.results['scanning'] = scan_results
+        
         return self.results
     
     def exploit(self) -> Dict[str, Any]:
         """Execute exploitation phase"""
         self.logger.info("[FRAMEWORK] Running exploitation-only mode")
         
-        # Run profiler and reconnaissance first
         self.profile, self.strategy = self._run_profiler()
         self.results['profile'] = self.profile
         self.results['strategy'] = self.strategy
         
-        # Run vulnerability detection
         vuln_results = self._run_vulnerability_detection()
         self.results['vulnerabilities'] = vuln_results
         
-        # Run exploitation
         exploit_results = self._run_exploitation()
         self.results['exploits'] = exploit_results
         
@@ -116,26 +117,49 @@ class PentestFramework:
         return profile, strategy
     
     def _run_reconnaissance(self) -> Dict:
-        """Run Reconnaissance (Phase 1) guided by profiler strategy"""
+        """Run Reconnaissance (Phase 1) — async or sync based on flag"""
+        if self.use_async:
+            try:
+                from core.async_recon import AsyncReconEngine
+                import asyncio
+                recon = AsyncReconEngine(
+                    target=self.target,
+                    logger=self.logger,
+                    profile=self.profile
+                )
+                results = asyncio.run(recon.execute())
+                return results
+            except Exception as e:
+                self.logger.warning(f"[FRAMEWORK] Async recon failed, falling back to sync: {e}")
+
         recon = ReconnaissanceEngine(target=self.target, logger=self.logger, profile=self.profile)
-        
-        # Pass strategy to reconnaissance for intelligent execution
         if self.strategy:
             recon.set_strategy(self.strategy)
-        
         results = recon.execute()
         return results
     
     def _run_scanning(self) -> Dict:
-        """Run Scanning & Enumeration (Phase 2) guided by profiler strategy"""
-        scanner = ScanningEngine(
-            target=self.target,
-            logger=self.logger,
-            profile=self.profile,
-            strategy=self.strategy
-        )
+        """Run Scanning & Enumeration (Phase 2) — async or sync based on flag"""
+        if self.use_async:
+            from core.async_scanner import AsyncScanner
+            scanner = AsyncScanner(
+                target=self.target,
+                logger=self.logger,
+                profile=self.profile,
+                strategy=self.strategy,
+                max_concurrent=self.max_concurrent
+            )
+            import asyncio
+            results = asyncio.run(scanner.execute())
+        else:
+            scanner = ScanningEngine(
+                target=self.target,
+                logger=self.logger,
+                profile=self.profile,
+                strategy=self.strategy
+            )
+            results = scanner.execute()
         
-        results = scanner.execute()
         return results
     
     def _run_vulnerability_detection(self) -> Dict:
@@ -156,14 +180,15 @@ class PentestFramework:
             target=self.target,
             logger=self.logger,
             profile=self.profile,
-            vulnerabilities=self.results.get('vulnerabilities', {})
+            vulnerabilities=self.results.get('vulnerabilities', {}),
+            scan_results=self.results.get('scanning', {})  # Pass forms from Phase 2
         )
         
         results = exploiter.execute()
         return results
     
     def generate_report(self, results: Dict, output_dir: str = None):
-        """Generate penetration test report"""
+        """Generate penetration test report — console summary always, PDF when output_dir is given"""
         self.logger.info("\n" + "="*60)
         self.logger.info("📊 PENETRATION TEST REPORT")
         self.logger.info("="*60)
@@ -246,7 +271,6 @@ class PentestFramework:
                 if severity.get('low', 0) > 0:
                     self.logger.info(f"   🟢 LOW: {severity['low']}")
                 
-                # Show top exploits
                 if exploits.get('exploits'):
                     self.logger.info(f"\n   Top Exploitable Issues:")
                     for exploit in exploits['exploits'][:3]:
@@ -255,7 +279,11 @@ class PentestFramework:
         
         self.logger.info("\n" + "="*60)
         
-        # Generate reports if output directory specified
+        # Generate PDF report if output directory specified
         if output_dir:
-            reporter = ReportGenerator(results, self.logger)
-            report_files = reporter.generate_all_reports(output_dir)
+            try:
+                from core.reporter import ReportGenerator
+                reporter = ReportGenerator(results, self.logger)
+                reporter.generate_all_reports(output_dir=output_dir)
+            except Exception as e:
+                self.logger.error(f"[FRAMEWORK] PDF report generation failed: {e}")
