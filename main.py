@@ -81,7 +81,7 @@ def create_parser():
     scan_parser.add_argument('--no-banner', action='store_true',
                             help='Disable banner display')
     scan_parser.add_argument('--async', dest='use_async', action='store_true',
-                            help='Use async/concurrent scanning (10-50x faster)')
+                            help='Use concurrent scanning for faster enumeration')
     scan_parser.add_argument('--max-concurrent', type=int, default=50,
                             help='Max concurrent requests for async mode (default: 50)')
     scan_parser.add_argument('--dir-wordlist', metavar='FILE',
@@ -130,7 +130,7 @@ def create_parser():
     enum_parser.add_argument('--no-banner', action='store_true',
                              help='Disable banner display')
     enum_parser.add_argument('--async', dest='use_async', action='store_true',
-                            help='Use async/concurrent scanning (10-50x faster)')
+                            help='Use concurrent scanning for faster enumeration')
     enum_parser.add_argument('--max-concurrent', type=int, default=50,
                             help='Max concurrent requests (default: 50)')
     enum_parser.add_argument('--dir-wordlist', metavar='FILE',
@@ -366,7 +366,7 @@ def cmd_list(args, logger):
     """List framework capabilities"""
     if args.phases:
         print("\nAvailable Phases:")
-        print("  0. Smart Profiling - Intelligent target analysis")
+        print("  0. Smart Profiling - Rule-based target analysis")
         print("  1. Reconnaissance - Information gathering")
         print("  2. Scanning & Enumeration - Resource discovery")
         print("  3. Vulnerability Detection - Security analysis")

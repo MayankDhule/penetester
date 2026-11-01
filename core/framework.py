@@ -1,6 +1,6 @@
 """
 Pentestrr Framework - Main Orchestrator
-Integrates all pentesting phases with intelligent strategy
+Integrates all pentesting phases with a rule-based strategy
 """
 from typing import Dict, Any
 from core.profiler import SmartProfiler
@@ -33,7 +33,7 @@ class PentestFramework:
     def execute_full_pentest(self) -> Dict[str, Any]:
         """Execute complete penetration test with all phases"""
         self.logger.info("="*60)
-        self.logger.info("🚀 STARTING INTELLIGENT PENETRATION TEST")
+        self.logger.info("🚀 STARTING PENETRATION TEST")
         self.logger.info("="*60)
         
         # Phase 0: Smart Profiling

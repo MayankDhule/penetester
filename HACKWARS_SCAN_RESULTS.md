@@ -1,17 +1,15 @@
-# Pentestrr Security Assessment Report
+# Pentestrr Scan Output — First-Pass Header + Heuristic Findings
 ## Target: hackwars.csbc.co.in
 
-**Assessment Date:** May 20, 2026  
-**Framework Version:** Pentestrr 1.0.0 (with Tool Recommendations)  
+> Sample output from a single automated first-pass scan. Findings are mostly
+> missing security headers plus a clickjacking (missing X-Frame-Options) check.
+> This is a lightweight first pass, not a full penetration test.
+
+**Scan Date:** May 20, 2026  
+**Framework Version:** Pentestrr 1.0.0  
 **Scan Mode:** Async (30 concurrent requests)  
-**Assessment Duration:** ~50 seconds  
-**Assessment Type:** Automated Security Scan
-
----
-
-## 🆕 NEW FEATURE SHOWCASE: Smart Tool Recommendations
-
-This scan demonstrates Pentestrr's **new intelligent tool recommendation system** that suggests specialized pentesting tools for each vulnerability found!
+**Duration:** ~50 seconds  
+**Type:** Automated first-pass scan
 
 ---
 
@@ -600,31 +598,6 @@ The security assessment of **hackwars.csbc.co.in** revealed **8 vulnerabilities*
 4. Deploy to production
 5. Re-scan to verify fixes
 6. Implement continuous security monitoring
-
----
-
-## 🆕 NEW FEATURE: Tool Recommendations
-
-This scan showcased Pentestrr's **new intelligent tool recommendation system**! For each vulnerability found, Pentestrr now suggests:
-
-✅ **Specialized tools** for deeper testing  
-✅ **Ready-to-use commands** for immediate action  
-✅ **Priority rankings** (HIGH/MEDIUM/LOW)  
-✅ **Platform information** (Python/Web/Java/etc.)  
-
-**Example:**
-```
-🛠️ Recommended Tools for Further Testing:
-   1. testssl.sh (Automated) - Priority: HIGH
-      Comprehensive SSL/TLS testing tool
-      💻 testssl.sh "URL"
-```
-
-This feature helps security professionals:
-- Know exactly which tools to use next
-- Save time researching tools
-- Get copy-paste commands
-- Prioritize testing efforts
 
 ---
 

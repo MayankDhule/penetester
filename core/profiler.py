@@ -1,6 +1,6 @@
 """
 Phase 0: Smart Profiler
-Intelligent target analysis and attack strategy generation
+Rule-based target analysis and attack strategy generation
 """
 import socket
 import requests
@@ -14,7 +14,7 @@ import json
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class SmartProfiler:
-    """Intelligent target profiler that analyzes and creates custom attack strategies"""
+    """Rule-based target profiler that analyzes and creates custom attack strategies"""
     
     def __init__(self, target: str, logger):
         self.target = target
@@ -56,7 +56,7 @@ class SmartProfiler:
     def execute(self) -> Tuple[Dict, Dict]:
         """Execute smart profiling and strategy generation"""
         self.logger.info("="*60)
-        self.logger.info("[PROFILER] 🧠 Smart Profiler - Intelligent Target Analysis")
+        self.logger.info("[PROFILER] 🧠 Smart Profiler - Rule-Based Target Analysis")
         self.logger.info("="*60)
         
         # Step 1: Quick fingerprinting

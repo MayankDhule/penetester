@@ -1,6 +1,6 @@
 """
-Async Scanner Module - High-Performance Concurrent Scanning
-Replaces synchronous requests with async/await for 10-50x speed improvement
+Async Scanner Module - Concurrent Scanning
+Uses async/await to run requests concurrently for faster enumeration
 """
 import asyncio
 import aiohttp

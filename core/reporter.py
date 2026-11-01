@@ -432,7 +432,7 @@ class ReportGenerator:
             story.append(Spacer(1, 0.2*inch))
             
             phases = [
-                ("Phase 0: Smart Profiling", "Intelligent target analysis and attack strategy generation"),
+                ("Phase 0: Smart Profiling", "Rule-based target analysis and attack strategy generation"),
                 ("Phase 1: Reconnaissance", "Information gathering, DNS enumeration, and port scanning"),
                 ("Phase 2: Scanning & Enumeration", "Web crawling, directory discovery, and endpoint enumeration"),
                 ("Phase 3: Vulnerability Detection", "Security header analysis, SSL/TLS checks, and vulnerability scanning"),

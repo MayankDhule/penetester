@@ -16,10 +16,10 @@ setup(
     version="1.0.0",
     author="Security Research Team",
     author_email="security@example.com",
-    description="Intelligent Penetration Testing Framework with AI-powered analysis",
+    description="CLI web-security scanner with target profiling and tool recommendations",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/MayankDhule04/pentestrr-Description-Intelligent-Penetration-Testing-Framework-with-AI-powered-analysis",
+    url="https://github.com/MayankDhule/penetester",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",

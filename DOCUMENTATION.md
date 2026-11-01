@@ -1,10 +1,10 @@
-# Pentestrr - Intelligent Penetration Testing Framework
+# Pentestrr - Penetration Testing Framework
 
 ## 1. Overview and Summary
 
-**Pentestrr v1.0.0** is an automated, end-to-end security assessment framework designed to map, scan, and safely exploit vulnerabilities in web applications. Unlike simplistic single-purpose scanners, Pentestrr acts as an orchestrator that intelligently profiles a target, customizes its scanning strategy based on the technologies it discovers, and seamlessly chains reconnaissance, vulnerability detection, and controlled exploitation.
+**Pentestrr v1.0.0** is an automated security assessment framework that maps, scans, and performs safe exploitation checks against web applications. It acts as an orchestrator that profiles a target with rule-based heuristics, adjusts its scanning strategy based on the technologies it detects, and chains reconnaissance, vulnerability detection, and controlled exploitation checks.
 
-The framework is highly concurrent (utilizing `aiohttp` for speed), integrates cleanly with local proxies (like Burp Suite or OWASP ZAP) for manual verification, and outputs professional, executive-ready PDF reports via `ReportLab`. 
+The framework supports concurrent requests (via `aiohttp`), integrates with local proxies (like Burp Suite or OWASP ZAP) for manual verification, and outputs PDF reports via `ReportLab`. 
 
 ## 2. Usage and CLI
 

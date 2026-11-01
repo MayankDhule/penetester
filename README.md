@@ -45,9 +45,6 @@ pentestrr scan example.com --async --max-concurrent 50
 # With out-of-band callback testing (interact.sh)
 pentestrr scan example.com --oob-domain abc123.interact.sh
 
-# API fuzzing
-pentestrr scan example.com --fuzz-apis
-
 # Professional workflow with Burp Suite
 pentestrr scan example.com --proxy http://127.0.0.1:8080 --async
 

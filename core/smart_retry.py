@@ -1,6 +1,6 @@
 """
 Smart Retry Logic
-Automatic retry with exponential backoff and intelligent error handling
+Automatic retry with exponential backoff and rule-based error handling
 """
 import time
 import asyncio
