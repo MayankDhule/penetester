@@ -6,6 +6,7 @@ import socket
 import requests
 import urllib3
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Tuple
 from urllib.parse import urlparse
 import ssl
@@ -672,18 +673,23 @@ class SmartProfiler:
         except (socket.gaierror, socket.herror) as e:
             self.logger.debug(f"[PROFILER] DNS resolution failed: {e}")
             target_ip = target_host
-        
-        for port in common_ports:
+
+        def check_port(port):
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(1.5)  # Increased timeout for reliability
+                sock.settimeout(1.5)
                 result = sock.connect_ex((target_ip, port))
-                if result == 0:
-                    self.profile['open_ports'].append(port)
                 sock.close()
+                return port if result == 0 else None
             except Exception as e:
                 self.logger.debug(f"[PROFILER] Port {port} check failed: {e}")
-                pass
+                return None
+
+        # Scan ports concurrently so the whole sweep takes ~one timeout
+        # instead of the sum of all per-port timeouts.
+        with ThreadPoolExecutor(max_workers=len(common_ports)) as pool:
+            found = [p for p in pool.map(check_port, common_ports) if p is not None]
+        self.profile['open_ports'].extend(sorted(found))
     
     def _detect_cms(self, response) -> str:
         """Detect CMS from response"""

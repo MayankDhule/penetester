@@ -6,6 +6,7 @@ import socket
 import subprocess
 import re
 import requests
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List
 import dns.resolver
 
@@ -270,23 +271,26 @@ class ReconnaissanceEngine:
             return
         
         target_ip = self.results['ip_addresses'][0]
-        open_ports = []
-        
-        for port in common_ports:
+
+        def check_port(port):
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(1)
                 result = sock.connect_ex((target_ip, port))
-                
-                if result == 0:
-                    open_ports.append(port)
-                    self.logger.info(f"[RECON] ✓ Port {port} is OPEN")
-                
                 sock.close()
-                
+                return port if result == 0 else None
             except Exception as e:
                 self.logger.debug(f"[RECON] Error scanning port {port}: {e}")
-        
+                return None
+
+        # Scan ports concurrently so the sweep takes ~one timeout instead of
+        # the sum of all per-port timeouts.
+        with ThreadPoolExecutor(max_workers=len(common_ports)) as pool:
+            open_ports = sorted(p for p in pool.map(check_port, common_ports) if p is not None)
+
+        for port in open_ports:
+            self.logger.info(f"[RECON] ✓ Port {port} is OPEN")
+
         self.results['open_ports'] = open_ports
         self.logger.info(f"[RECON] Found {len(open_ports)} open ports")
     
