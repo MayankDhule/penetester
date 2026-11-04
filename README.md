@@ -121,11 +121,11 @@ pentestrr --help
 - Cookie security
 
 ### ✅ Phase 4: Safe Exploitation
-- Clickjacking testing
-- Protocol downgrade testing
-- Basic SQL injection detection (error-based)
-- Basic XSS detection (reflection-based)
-- Tests discovered forms from Phase 2
+- Clickjacking and protocol-downgrade testing
+- SQL injection detection: error-based (baseline-aware), boolean-differential, and controlled time-based
+- Reflected XSS detection
+- Tests discovered forms **and discovered URL parameters** from the crawl (e.g. `listproducts.php?cat=1`)
+- Every finding carries a `confidence` tag (`confirmed` / `probable`)
 
 ### ✅ Tool Recommendations
 - Suggests specialized tools for each vulnerability
