@@ -5,6 +5,7 @@ Web crawling, directory discovery, and service enumeration
 import requests
 import urllib3
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Set
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
@@ -140,6 +141,30 @@ class ScanningEngine:
         
         return True
     
+    def _probe(self, urls, method: str = 'get', timeout: int = 5,
+               allow_redirects: bool = False, max_workers: int = 12) -> Dict:
+        """Fetch many URLs concurrently; return {url: Response or None}.
+
+        Enumeration steps (directories, files, backups, VCS, API paths) are
+        independent probes, so running them in parallel turns the sum of all
+        per-request timeouts into roughly a single timeout.
+        """
+        results: Dict[str, object] = {}
+        if not urls:
+            return results
+
+        def fetch(u):
+            try:
+                fn = requests.head if method == 'head' else requests.get
+                return u, fn(u, timeout=timeout, verify=False, allow_redirects=allow_redirects)
+            except requests.RequestException:
+                return u, None
+
+        with ThreadPoolExecutor(max_workers=min(max_workers, len(urls))) as pool:
+            for u, r in pool.map(fetch, urls):
+                results[u] = r
+        return results
+
     def web_crawl(self, base_url: str, depth: int = 0):
         """Crawl website to discover pages"""
         if depth > self.max_depth:
@@ -204,20 +229,15 @@ class ScanningEngine:
             common_dirs.extend(['wp-admin', 'wp-content', 'wp-includes'])
         
         found_count = 0
-        
-        for directory in common_dirs[:10]:  # Check first 10 to keep it fast
-            url = urljoin(base_url, f"/{directory}/")
-            
-            try:
-                response = requests.head(url, timeout=5, verify=False, allow_redirects=False)
-                
-                if response.status_code in [200, 301, 302, 403]:
-                    self.results['directories'].append(url)
-                    found_count += 1
-                    self.logger.info(f"[SCANNER] ✓ Found: /{directory}/ [{response.status_code}]")
-                    
-            except requests.exceptions.RequestException as e:
-                self.logger.debug(f"[SCANNER] Directory check failed for /{directory}/: {e}")
+        dir_urls = {d: urljoin(base_url, f"/{d}/") for d in common_dirs[:10]}
+        responses = self._probe(list(dir_urls.values()), method='head')
+
+        for directory, url in dir_urls.items():
+            response = responses.get(url)
+            if response is not None and response.status_code in [200, 301, 302, 403]:
+                self.results['directories'].append(url)
+                found_count += 1
+                self.logger.info(f"[SCANNER] ✓ Found: /{directory}/ [{response.status_code}]")
         
         if found_count == 0:
             self.logger.info("[SCANNER] No common directories found")
@@ -237,29 +257,28 @@ class ScanningEngine:
         ]
         
         found_count = 0
-        
-        for filename in interesting_files:
-            url = urljoin(base_url, f"/{filename}")
-            
+        file_urls = {f: urljoin(base_url, f"/{f}") for f in interesting_files}
+        responses = self._probe(list(file_urls.values()), method='get', allow_redirects=True)
+
+        for filename, url in file_urls.items():
+            response = responses.get(url)
+            if response is None or response.status_code != 200:
+                continue
             try:
-                response = requests.get(url, timeout=5, verify=False)
-                
-                if response.status_code == 200:
-                    # Verify it's a real file, not SPA redirect
-                    if self._is_real_file(response, expected_type='config'):
-                        self.results['files'].append({
-                            'url': url,
-                            'filename': filename,
-                            'size': len(response.content)
-                        })
-                        found_count += 1
-                        self.logger.info(f"[SCANNER] ✓ Found: {filename} ({len(response.content)} bytes)")
-                        
-                        # Parse robots.txt for additional paths
-                        if filename == 'robots.txt':
-                            self._parse_robots(response.text, base_url)
-                    
-            except (requests.exceptions.RequestException, ValueError) as e:
+                # Verify it's a real file, not SPA redirect
+                if self._is_real_file(response, expected_type='config'):
+                    self.results['files'].append({
+                        'url': url,
+                        'filename': filename,
+                        'size': len(response.content)
+                    })
+                    found_count += 1
+                    self.logger.info(f"[SCANNER] ✓ Found: {filename} ({len(response.content)} bytes)")
+
+                    # Parse robots.txt for additional paths
+                    if filename == 'robots.txt':
+                        self._parse_robots(response.text, base_url)
+            except ValueError as e:
                 self.logger.debug(f"[SCANNER] Robots.txt parsing failed: {e}")
         
         if found_count == 0:
@@ -372,35 +391,29 @@ class ScanningEngine:
         ]
         
         found_backups = []
-        
-        # Check combinations
+        combo_urls = {}
         for filename in common_files[:5]:  # Limit for speed
             for ext in backup_patterns[:6]:
-                test_url = urljoin(base_url, f"/{filename}{ext}")
-                
-                try:
-                    response = requests.get(test_url, timeout=3, verify=False, allow_redirects=False)
-                    
-                    if response.status_code == 200:
-                        # Verify it's a real file, not SPA redirect
-                        if self._is_real_file(response, expected_type='backup'):
-                            self.logger.info(f"[SCANNER] ⚠️  Found backup file: {filename}{ext}")
-                            found_backups.append({
-                                'filename': f"{filename}{ext}",
-                                'url': test_url,
-                                'size': len(response.content)
-                            })
-                            
-                            # Add to files list
-                            self.results['files'].append({
-                                'filename': f"{filename}{ext}",
-                                'url': test_url,
-                                'size': len(response.content),
-                                'type': 'backup'
-                            })
-                        
-                except requests.RequestException:
-                    pass
+                name = f"{filename}{ext}"
+                combo_urls[name] = urljoin(base_url, f"/{name}")
+
+        responses = self._probe(list(combo_urls.values()), method='get', timeout=3)
+        for name, test_url in combo_urls.items():
+            response = responses.get(test_url)
+            if response is not None and response.status_code == 200 \
+                    and self._is_real_file(response, expected_type='backup'):
+                self.logger.info(f"[SCANNER] ⚠️  Found backup file: {name}")
+                found_backups.append({
+                    'filename': name,
+                    'url': test_url,
+                    'size': len(response.content)
+                })
+                self.results['files'].append({
+                    'filename': name,
+                    'url': test_url,
+                    'size': len(response.content),
+                    'type': 'backup'
+                })
         
         if found_backups:
             self.logger.info(f"[SCANNER] ✓ Found {len(found_backups)} backup files")
@@ -422,35 +435,26 @@ class ScanningEngine:
         ]
         
         found_vcs = []
-        
-        for vcs_path in vcs_paths:
-            test_url = urljoin(base_url, f"/{vcs_path}")
-            
-            try:
-                response = requests.get(test_url, timeout=3, verify=False, allow_redirects=False)
-                
-                if response.status_code == 200 and len(response.content) > 0:
-                    # Verify it's a real VCS file, not SPA redirect
-                    if self._is_real_file(response, expected_type='vcs'):
-                        vcs_type = vcs_path.split('/')[0]
-                        self.logger.info(f"[SCANNER] ⚠️  CRITICAL: {vcs_type} repository exposed!")
-                        
-                        found_vcs.append({
-                            'type': vcs_type,
-                            'url': test_url,
-                            'severity': 'CRITICAL'
-                        })
-                        
-                        # Add to files list
-                        self.results['files'].append({
-                            'filename': vcs_path,
-                            'url': test_url,
-                            'size': len(response.content),
-                            'type': 'vcs_exposure'
-                        })
-                    
-            except requests.RequestException:
-                pass
+        vcs_urls = {p: urljoin(base_url, f"/{p}") for p in vcs_paths}
+        responses = self._probe(list(vcs_urls.values()), method='get', timeout=3)
+
+        for vcs_path, test_url in vcs_urls.items():
+            response = responses.get(test_url)
+            if response is not None and response.status_code == 200 and len(response.content) > 0 \
+                    and self._is_real_file(response, expected_type='vcs'):
+                vcs_type = vcs_path.split('/')[0]
+                self.logger.info(f"[SCANNER] ⚠️  CRITICAL: {vcs_type} repository exposed!")
+                found_vcs.append({
+                    'type': vcs_type,
+                    'url': test_url,
+                    'severity': 'CRITICAL'
+                })
+                self.results['files'].append({
+                    'filename': vcs_path,
+                    'url': test_url,
+                    'size': len(response.content),
+                    'type': 'vcs_exposure'
+                })
         
         if found_vcs:
             self.logger.info(f"[SCANNER] ⚠️  Found {len(found_vcs)} VCS exposures (CRITICAL!)")
@@ -476,13 +480,14 @@ class ScanningEngine:
         ]
         
         found_apis = []
-        
-        for api_path in api_paths:
-            test_url = urljoin(base_url, api_path)
-            
+        api_urls = {p: urljoin(base_url, p) for p in api_paths}
+        responses = self._probe(list(api_urls.values()), method='get', timeout=3)
+
+        for api_path, test_url in api_urls.items():
+            response = responses.get(test_url)
+            if response is None:
+                continue
             try:
-                response = requests.get(test_url, timeout=3, verify=False, allow_redirects=False)
-                
                 # Check for API indicators
                 if response.status_code in [200, 401, 403]:
                     content_type = response.headers.get('Content-Type', '').lower()
