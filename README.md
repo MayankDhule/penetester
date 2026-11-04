@@ -147,9 +147,7 @@ project/
 │   ├── wordlists.py              # External wordlist management
 │   ├── vulnerability_detector.py # Phase 3: Vulnerability Detection
 │   ├── exploiter.py              # Phase 4: Exploitation
-│   ├── oob_testing.py            # Out-of-Band callback testing (interact.sh client)
-│   ├── api_fuzzer.py             # API fuzzing (OpenAPI/GraphQL)
-│   ├── smart_retry.py            # Retry logic with circuit breaker
+│   ├── oob_testing.py            # Out-of-Band callback testing (interact.sh client, standalone)
 │   ├── reporter.py               # Phase 5: Report Generation
 │   ├── json_output.py            # JSON/JSON Lines output
 │   ├── stdin_handler.py          # Stdin target reading
@@ -273,9 +271,6 @@ pentestrr scan example.com --oob-domain abc123.interact.sh
 # Full machine-readable results
 pentestrr scan example.com --json > results.json
 ```
-
-> Note: an API fuzzer exists in `core/api_fuzzer.py` but is not yet wired to a
-> CLI flag, so there is no `--fuzz-apis` option today.
 
 ### Example 4: Professional Workflow with Burp Suite
 ```bash

@@ -14,8 +14,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 setup(
     name="pentestrr",
     version="1.0.0",
-    author="Security Research Team",
-    author_email="security@example.com",
+    author="Mayank Dhule",
     description="CLI web-security scanner with target profiling and tool recommendations",
     long_description=long_description,
     long_description_content_type="text/markdown",
