@@ -74,6 +74,7 @@ pentestrr --help
 ```bash
 # Performance
 --async                 Use async/concurrent scanning
+--delay SECONDS         Throttle: minimum delay between HTTP requests (rate limiting)
 --max-concurrent N      Max concurrent requests (default: 50)
 
 # Wordlists

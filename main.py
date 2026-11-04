@@ -13,6 +13,7 @@ from core.logger import setup_logger
 from core.stdin_handler import StdinHandler
 from core.json_output import JSONOutput, StreamingJSONReporter
 from core.proxy_handler import ProxyHandler, ProxyConfig
+from core import http_config
 
 # Version
 VERSION = "1.0.0"
@@ -99,6 +100,9 @@ def create_parser():
     scan_parser.add_argument('--oob-domain', metavar='DOMAIN',
                             help='Out-of-band domain for blind vulnerability testing '
                                  '(e.g., abc123.interact.sh or your Burp Collaborator domain)')
+    scan_parser.add_argument('--delay', type=float, default=0.0, metavar='SECONDS',
+                            help='Throttle: minimum delay between HTTP requests '
+                                 '(e.g., 0.5). Reduces load and avoids rate-limit blocks.')
     
     # === PROFILE COMMAND ===
     profile_parser = subparsers.add_parser('profile',
@@ -185,7 +189,12 @@ def cmd_scan(args, logger):
     if args.proxy:
         ProxyConfig.set_proxy(args.proxy)
         logger.info(f"Proxy: {args.proxy}")
-    
+
+    # Apply global request throttle if requested
+    if getattr(args, 'delay', 0):
+        http_config.configure(delay=args.delay)
+        logger.info(f"Throttle: >= {args.delay}s between requests")
+
     # Setup JSON output if requested
     json_mode = args.json or args.jsonl
     
